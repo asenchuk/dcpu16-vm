@@ -4,3 +4,10 @@
 *.jar
 *.war
 *.ear
+
+# netbeans #
+nbproject/
+build/
+dist/
+manifest.mf
+build.xml
