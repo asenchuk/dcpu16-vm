@@ -4,6 +4,15 @@ import net.taviscaron.dcpu16vm.machine.Processor;
 import net.taviscaron.dcpu16vm.machine.device.Device;
 import net.taviscaron.dcpu16vm.machine.device.HardwareInfo;
 
+import javax.swing.JFrame;
+import javax.swing.JPanel;
+import java.awt.EventQueue;
+import java.awt.Color;
+import java.awt.Graphics;
+
+import java.util.Timer;
+import java.util.TimerTask;
+
 /**
  * LEM1802 implementation
  * @author Andrei Senchuk
@@ -21,6 +30,10 @@ public class LEM1802 extends Device {
     private static final int SCREEN_HEIGHT = 12;
     private static final int CELL_WIDTH = 4;
     private static final int CELL_HEIGHT = 8;
+    private static final int POINT_SIZE = 4;
+
+    private static final int REPAINT_FREQ = 20; // Hz
+    private static final int BLINK_DELAY = 1000; // msec
 
     private static final short[] DEFAULT_FONT = new short[] {
             (short)0x000f, (short)0x0808,
@@ -160,20 +173,63 @@ public class LEM1802 extends Device {
             (short)0x0f55, (short)0x0f5f, (short)0x0ff5, (short)0x0fff,
     };
 
+    private short memMapScreen;
+    private short memMapFont;
+    private short memMapPalette;
+    private short borderColor;
+    private Object repaintLockObj = new Object();
+
+    @Override
+    public void init() {
+        EventQueue.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                final JFrame frame = new JFrame();
+                frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+                frame.setSize(SCREEN_WIDTH * CELL_WIDTH * POINT_SIZE, SCREEN_HEIGHT * CELL_HEIGHT * POINT_SIZE);
+                frame.setResizable(false);
+                frame.setVisible(true);
+
+                final PaintPane paintPane = new PaintPane();
+                frame.add(paintPane);
+
+                new Timer().scheduleAtFixedRate(new TimerTask() {
+                    @Override
+                    public void run() {
+                        EventQueue.invokeLater(new Runnable() {
+                            @Override
+                            public void run() {
+                                paintPane.toggleBlink();
+                                frame.getContentPane().validate();
+                                frame.getContentPane().repaint();
+                            }
+                        });
+                    }
+                }, 0, 1000 / REPAINT_FREQ);
+            }
+        });
+    }
+
     @Override
     public void interrupt(Processor.State state) {
         switch(state.readRegister(Processor.Register.A)) {
             case MEM_MAP_SCREEN:
-                memMapScreen(state);
+                synchronized(repaintLockObj) {
+                    memMapScreen = state.readRegister(Processor.Register.B);
+                }
                 break;
             case MEM_MAP_FONT:
-                memMapFont(state);
+                synchronized(repaintLockObj) {
+                    memMapFont = state.readRegister(Processor.Register.B);
+                }
                 break;
             case MEM_MAP_PALETTE:
-                memMapPalette(state);
+                synchronized(repaintLockObj) {
+                    memMapPalette = state.readRegister(Processor.Register.B);
+                }
                 break;
             case SET_BORDER_COLOR:
-                setBorderColor(state);
+                // SET_BORDER_COLOR is not supported
                 break;
             case MEM_DUMP_FONT:
                 memoryBus.memory().set(state.readRegister(Processor.Register.B), DEFAULT_FONT);
@@ -186,19 +242,96 @@ public class LEM1802 extends Device {
         }
     }
 
-    private void memMapScreen(Processor.State state) {
+    private class PaintPane extends JPanel {
+        private boolean blink = false;
+        private long lastBlinkChangingTime;
 
-    }
+        public void toggleBlink() {
+            long currentTime = System.currentTimeMillis();
+            if(currentTime - lastBlinkChangingTime > BLINK_DELAY) {
+                lastBlinkChangingTime = currentTime;
+                blink = !blink;
+            }
+        }
 
-    private void memMapFont(Processor.State state) {
+        @Override
+        public void paint(Graphics graphics) {
+            synchronized(repaintLockObj) {
+                safePaint(graphics);
+            }
+        }
 
-    }
+        private void safePaint(Graphics g) {
+            // draw background
+            g.setColor(Color.BLACK);
+            g.fillRect(0, 0, SCREEN_WIDTH * CELL_WIDTH * POINT_SIZE, SCREEN_HEIGHT * CELL_HEIGHT * POINT_SIZE);
 
-    private void memMapPalette(Processor.State state) {
+            // check screen is connected
+            if(memMapScreen == 0) {
+                return;
+            }
 
-    }
+            for(short j = 0; j < SCREEN_HEIGHT; j++) {
+                for(short i = 0; i < SCREEN_WIDTH; i++) {
+                    short memIndex = (short)(memMapScreen + SCREEN_WIDTH * j + i);
+                    short value = memoryBus.memory().readWord(memIndex);
 
-    private void setBorderColor(Processor.State state) {
+                    short symbolIndex = (short)(value & 0x7f);
+                    short blinking = (short)((value & 0x80) >> 7);
+                    short bgIndex = (short)((value & 0xf00) >> 8);
+                    short fgIndex = (short)((value & 0xf000) >> 12);
 
+                    // swap colors
+                    if(blinking != 0 && blink) {
+                        bgIndex ^= fgIndex;
+                        fgIndex ^= bgIndex;
+                        bgIndex ^= fgIndex;
+                    }
+
+                    // choose color
+                    short bg = DEFAULT_PALETTE[bgIndex];
+                    short fg = DEFAULT_PALETTE[fgIndex];
+                    if(memMapPalette != 0) {
+                        bg = memoryBus.memory().readWord((short)(memMapPalette + bgIndex));
+                        fg = memoryBus.memory().readWord((short)(memMapPalette + fgIndex));
+                    }
+
+                    // choose symbol
+                    int symbol = (DEFAULT_FONT[symbolIndex * 2] << 16) + DEFAULT_FONT[symbolIndex * 2 + 1];
+                    if(memMapFont != 0) {
+                        short first = memoryBus.memory().readWord((short)(memMapFont + symbolIndex));
+                        short second = memoryBus.memory().readWord((short)(memMapFont + symbolIndex + 1));
+                        symbol = (first << 16) + second;
+                    }
+
+                    drawSymbol(g, i, j, symbol, fg, bg);
+                }
+            }
+        }
+
+        private void drawSymbol(Graphics g, short xPos, short yPos, int symbol, short fg, short bg) {
+            // draw bg
+            g.setColor(colorFromColorCode(bg));
+            g.fillRect(xPos * CELL_WIDTH * POINT_SIZE, yPos * CELL_HEIGHT * POINT_SIZE, CELL_WIDTH * POINT_SIZE, CELL_HEIGHT * POINT_SIZE);
+
+            // draw symbol
+            g.setColor(colorFromColorCode(fg));
+
+            for(short i = 0; i < CELL_WIDTH; i++) {
+                for(short j = 0; j < CELL_HEIGHT; j++) {
+                    int pos = (CELL_WIDTH - i) * CELL_HEIGHT + j;
+                    if((symbol & (1 << pos)) != 0) {
+                        g.fillRect((xPos * CELL_WIDTH + i) * POINT_SIZE, (yPos * CELL_HEIGHT + j) * POINT_SIZE, POINT_SIZE, POINT_SIZE);
+                    }
+                }
+            }
+        }
+
+        private Color colorFromColorCode(short color) {
+            int blue = (color & 0xf) * 0x10;
+            int green = ((color & 0xf0) >> 4) * 0x10;
+            int red = ((color & 0xf00) >> 8) * 0x10;
+            return new Color(red, green, blue);
+        }
     }
 }
