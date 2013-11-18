@@ -1,6 +1,7 @@
 package net.taviscaron.dcpu16vm.machine.impl;
 
 import net.taviscaron.dcpu16vm.machine.Processor;
+import net.taviscaron.dcpu16vm.machine.device.Device;
 
 /**
  * Processor implementation
@@ -525,7 +526,7 @@ public class ProcessorImpl extends Processor {
     private final SpecialOperation hwnOp = new SpecialOperation() {
         @Override
         public void perform(short opcode, short specialOpcode, short aCode, Value a) {
-            throw new UnsupportedOperationException();
+            state.writeRegister(Register.A, (short)hardwareBus.devices().length);
         }
     };
     
@@ -533,7 +534,18 @@ public class ProcessorImpl extends Processor {
     private final SpecialOperation hwqOp = new SpecialOperation() {
         @Override
         public void perform(short opcode, short specialOpcode, short aCode, Value a) {
-            throw new UnsupportedOperationException();
+            Device device = hardwareBus.device(a.get());
+
+            int deviceId = device.getDeviceId();
+            state.writeRegister(Register.A, (short)deviceId);
+            state.writeRegister(Register.B, (short)(deviceId >> 16));
+
+            int manufacturer = device.getManufacturer();
+            state.writeRegister(Register.X, (short)manufacturer);
+            state.writeRegister(Register.Y, (short)(manufacturer >> 16));
+
+            short version = device.getVersion();
+            state.writeRegister(Register.C, version);
         }
     };
     
@@ -541,7 +553,8 @@ public class ProcessorImpl extends Processor {
     private final SpecialOperation hwiOp = new SpecialOperation() {
         @Override
         public void perform(short opcode, short specialOpcode, short aCode, Value a) {
-            throw new UnsupportedOperationException();
+            Device device = hardwareBus.device(a.get());
+            device.interrupt(state);
         }
     };
     

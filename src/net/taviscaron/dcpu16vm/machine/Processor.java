@@ -62,11 +62,17 @@ public abstract class Processor {
     
     protected State state = new State();
     protected Machine.MemoryBus memoryBus;
+    protected Machine.HardwareBus hardwareBus;
     protected Debugger debugger;
     
     /** Setup processor->memory communication bus */
     public void setMemoryBus(Machine.MemoryBus memoryBus) {
         this.memoryBus = memoryBus;
+    }
+
+    /** Setup processor->devices communication bus */
+    public void setHardwareBus(Machine.HardwareBus hardwareBus) {
+        this.hardwareBus = hardwareBus;
     }
     
     /** Attach debugger to the processor */

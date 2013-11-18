@@ -11,3 +11,11 @@ build/
 dist/
 manifest.mf
 build.xml
+
+# IDEA #
+.idea/
+out/
+*.iml
+
+# MACOS #
+.DS_Store
