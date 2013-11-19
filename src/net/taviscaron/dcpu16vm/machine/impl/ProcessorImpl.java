@@ -425,21 +425,8 @@ public class ProcessorImpl extends Processor {
         }
     };
     
-    /** special operation */
-    private final Operation specialOperation = new Operation() {
-        @Override
-        public void perform(short opcode, short aCode, Value a, short bCode, Value b) {
-            Operation operation = null;
-            if(bCode >= specialOperations.length || (operation = specialOperations[bCode]) == null) {
-                throw new RuntimeException(String.format("Special operation 0x%04X is not supported", bCode));
-            }
-            
-            operation.perform(opcode, aCode, a, bCode, b);
-        }
-    };
-    
     private final Operation[] operations = new Operation[] {
-        /* 0x00 */ specialOperation,
+        /* 0x00 */ null,
         /* 0x01 */ setOp,
         /* 0x02 */ addOp,
         /* 0x03 */ subOp,
@@ -526,7 +513,7 @@ public class ProcessorImpl extends Processor {
     private final SpecialOperation hwnOp = new SpecialOperation() {
         @Override
         public void perform(short opcode, short specialOpcode, short aCode, Value a) {
-            state.writeRegister(Register.A, (short)hardwareBus.devices().length);
+            a.set((short)hardwareBus.devices().length);
         }
     };
     
@@ -620,18 +607,26 @@ public class ProcessorImpl extends Processor {
     
     private void loop() {
         short word = nextWord();
+        
         short opcode = (short)(word & 0x001f);
+        short aCode = (short)((word & 0xfc00) >> 10);
+        short bCode = (short)((word & 0x03e0) >> 5);
         
         Operation operation = null;
-        if(opcode >= operations.length || (operation = operations[opcode]) == null) {
-            throw new RuntimeException(String.format("Operation 0x%04X is not supported", opcode));
-        }
-        
-        short aCode = (short)((word & 0xfc00) >> 10);
         Value a = valueForCode(aCode, true);
+        Value b = null;
         
-        short bCode = (short)((word & 0x03e0) >> 5);
-        Value b = valueForCode(bCode, false);
+        // special operation
+        if (opcode == 0x0000) {
+            if (bCode >= specialOperations.length || (operation = specialOperations[bCode]) == null) {
+                throw new RuntimeException(String.format("Special operation 0x%04X is not supported", bCode));
+            }
+        } else {
+            b = valueForCode(bCode, false);
+            if (opcode >= operations.length || (operation = operations[opcode]) == null) {
+                throw new RuntimeException(String.format("Operation 0x%04X is not supported", opcode));
+            }
+        }
         
         if(skip) {
             skip = (operation instanceof ConditionalOperation);
