@@ -3,6 +3,9 @@ package net.taviscaron.dcpu16vm.machine.impl;
 import net.taviscaron.dcpu16vm.machine.Processor;
 import net.taviscaron.dcpu16vm.machine.device.Device;
 
+import java.util.LinkedList;
+import java.util.Queue;
+
 /**
  * Processor implementation
  * @author Andrei Senchuk
@@ -18,7 +21,7 @@ public class ProcessorImpl extends Processor {
         @Override
         public void perform(short opcode, short aCode, Value a, short bCode, Value b) {
             if(!condition(a, b)) {
-                skip = true;
+                state.skipping = true;
             }
         }
         
@@ -85,13 +88,6 @@ public class ProcessorImpl extends Processor {
         }
     }
     
-    /** stack push/pop get/set */
-    private class StackValue extends MemoryValue {
-        public StackValue(boolean push) {
-            super((push) ? --state.sp : state.sp++);
-        }
-    }
-    
     /** literal get/set */
     private class LiteralValue implements Value {
         private short value;
@@ -110,7 +106,33 @@ public class ProcessorImpl extends Processor {
             // attempting to write to a literal value fails silently
         }
     }
-    
+
+    /** push value into the stack */
+    private final Value pushValue = new Value() {
+        @Override
+        public short get() {
+            return 0;
+        }
+
+        @Override
+        public void set(short value) {
+            memoryBus.memory().writeWord(--state.sp, value);
+        }
+    };
+
+    /** pop value from the stack */
+    private final Value popValue = new Value() {
+        @Override
+        public short get() {
+            return memoryBus.memory().readWord(state.sp++);
+        }
+
+        @Override
+        public void set(short value) {
+            // nothing on pop
+        }
+    };
+
     /** SP */
     private final Value spValue = new Value() {
         @Override
@@ -473,7 +495,11 @@ public class ProcessorImpl extends Processor {
     private final SpecialOperation intOp = new SpecialOperation() {
         @Override
         public void perform(short opcode, short specialOpcode, short aCode, Value a) {
-            throw new UnsupportedOperationException();
+            if(forceInterruptsQueuing && interruptsQueuing) {
+                interrupt(a.get());
+            } else {
+                doInterrupt(a.get());
+            }
         }
     };
     
@@ -481,7 +507,7 @@ public class ProcessorImpl extends Processor {
     private final SpecialOperation iagOp = new SpecialOperation() {
         @Override
         public void perform(short opcode, short specialOpcode, short aCode, Value a) {
-            throw new UnsupportedOperationException();
+            a.set(state.ia);
         }
     };
     
@@ -489,7 +515,7 @@ public class ProcessorImpl extends Processor {
     private final SpecialOperation iasOp = new SpecialOperation() {
         @Override
         public void perform(short opcode, short specialOpcode, short aCode, Value a) {
-            throw new UnsupportedOperationException();
+            state.ia = a.get();
         }
     };
     
@@ -497,7 +523,9 @@ public class ProcessorImpl extends Processor {
     private final SpecialOperation rfiOp = new SpecialOperation() {
         @Override
         public void perform(short opcode, short specialOpcode, short aCode, Value a) {
-            throw new UnsupportedOperationException();
+            interruptsQueuing = false;
+            state.writeRegister(Register.A, memoryBus.memory().readWord(state.sp++));
+            state.pc = memoryBus.memory().readWord(state.sp++);
         }
     };
     
@@ -505,7 +533,7 @@ public class ProcessorImpl extends Processor {
     private final SpecialOperation iaqOp = new SpecialOperation() {
         @Override
         public void perform(short opcode, short specialOpcode, short aCode, Value a) {
-            throw new UnsupportedOperationException();
+            forceInterruptsQueuing = (a.get() != 0);
         }
     };
     
@@ -579,23 +607,48 @@ public class ProcessorImpl extends Processor {
         /* 0x1E */ null,
         /* 0x1F */ null,
     };
-    
-    /** 
-     * Skip instruction flag. If true all chained conditional
-     * instructios should be skipped.
+
+    /**
+     * Force interrupts queuing. If true - interrupts will be queued.
+     * Otherwise interrupts will be triggered as normal.
      */
-    private boolean skip;
-    
+    private boolean forceInterruptsQueuing;
+
+    /** Interrupts queuing */
+    private boolean interruptsQueuing;
+
+    /**
+     * Interrupts queue.
+     * If the queue grows longer than 256 interrupts, the DCPU-16 will catch fire.
+     */
+    private Queue<Short> interruptsQueue = new LinkedList<Short>();
+
+    /**
+     * Processor interrupts lock
+     */
+    private final Object lock = new Object();
+
     @Override
     public void start() {
-        skip = false;
+        state.skipping = false;
         state.reset();
         state.sp = memoryBus.memory().sizeInWords();
         
         while(true) {
             // interrupts are not triggered while the DCPU-16 is skipping.
-            if(!skip) {
-                interrupt();
+            if(!state.skipping && !interruptsQueuing) {
+                Short code = null;
+                synchronized(lock) {
+                    if(interruptsQueue.size() >= MAX_QUEUED_INT) {
+                        throw new RuntimeException("Interrupts queue grow to " + MAX_QUEUED_INT + " interrupts. DCPU-16 catched fire.");
+                    }
+
+                    code = interruptsQueue.poll();
+                }
+
+                if(code != null) {
+                    doInterrupt(code);
+                }
             }
             
             // perform loop
@@ -604,7 +657,14 @@ public class ProcessorImpl extends Processor {
             dumpState();
         }
     }
-    
+
+    @Override
+    public void interrupt(short code) {
+        synchronized(lock) {
+            interruptsQueue.add(code);
+        }
+    }
+
     private void loop() {
         short word = nextWord();
         
@@ -628,15 +688,21 @@ public class ProcessorImpl extends Processor {
             }
         }
         
-        if(skip) {
-            skip = (operation instanceof ConditionalOperation);
+        if(state.skipping) {
+            state.skipping = (operation instanceof ConditionalOperation);
         } else {
             operation.perform(opcode, aCode, a, bCode, b);
         }
     }
     
-    private boolean interrupt() {
-        return false;
+    private void doInterrupt(short code) {
+        if(state.ia != 0) {
+            interruptsQueuing = true;
+            memoryBus.memory().writeWord(--state.sp, state.pc);
+            memoryBus.memory().writeWord(--state.sp, state.readRegister(Register.A));
+            state.writeRegister(Register.A, code);
+            state.pc = state.ia;
+        }
     }
     
     private short nextWord() {
@@ -652,7 +718,7 @@ public class ProcessorImpl extends Processor {
         } else if(code >= 0x10 && code <= 0x17) {
             value = new RegisterAddressValue((short)(code - 0x10), true);
         } else if(code == 0x18) {
-            value = new StackValue(!isAValue);            
+            value = ((isAValue) ? popValue : pushValue);
         } else if(code == 0x19) {
             value = new MemoryValue(state.sp);
         } else if(code == 0x1a) {

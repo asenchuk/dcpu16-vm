@@ -7,6 +7,8 @@ import java.util.Arrays;
  * @author Andrei Senchuk
  */
 public abstract class Processor {
+    public static final int MAX_QUEUED_INT = 255;
+
     /** DCPU-16 has 8 registers */
     public enum Register {
         A, B, C, X, Y, Z, I, J
@@ -33,7 +35,10 @@ public abstract class Processor {
 
         /** interrupt address */
         public short ia;
-        
+
+        /** intructions skipping */
+        public boolean skipping;
+
         public void reset() {
             pc = 0;
             sp = 0;
@@ -92,4 +97,5 @@ public abstract class Processor {
     
     /** Start processor working */
     public abstract void start();
+    public abstract void interrupt(short code);
 }

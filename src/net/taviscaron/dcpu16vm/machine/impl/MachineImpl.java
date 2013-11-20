@@ -24,7 +24,7 @@ public class MachineImpl implements Machine {
     private final InterruptionBus interruptionBus = new InterruptionBus() {
         @Override
         public void interrupt(short code) {
-            // TODO: interrupt processor
+            processor.interrupt(code);
         }
     };
 
