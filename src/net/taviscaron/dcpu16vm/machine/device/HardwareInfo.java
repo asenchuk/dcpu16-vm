@@ -14,5 +14,5 @@ import java.lang.annotation.Target;
 public @interface HardwareInfo {
     public int id();
     public short version();
-    public int manufacturer();
+    public int manufacturer() default 0x000; // 0x0000 for generic devices
 }
