@@ -13,6 +13,7 @@ public class MachineImpl implements Machine {
     private Processor processor;
     private Memory memory;
     private Device[] devices;
+    private short[] program;
 
     private final MemoryBus memoryBus = new MemoryBus() {
         @Override
@@ -43,38 +44,50 @@ public class MachineImpl implements Machine {
         }
     };
 
-    public MachineImpl(Processor processor, Memory memory) {
-        this.processor = processor;
+    @Override
+    public void setMemory(Memory memory) {
         this.memory = memory;
-        this.devices = new Device[0];
-        init();        
     }
 
-    public MachineImpl(Processor processor, Memory memory, Device[] devices) {
+    @Override
+    public void setProcessor(Processor processor) {
         this.processor = processor;
-        this.memory = memory;
-        this.devices = devices;
-        init();
     }
 
-    private void init() {
+    @Override
+    public void setDevices(Device[] devices) {
+        this.devices = (devices != null) ? devices : new Device[0];
+    }
+
+    @Override
+    public void setProgram(short[] program) {
+        this.program = program;
+    }
+
+    @Override
+    public void start() {
+        if(processor == null) {
+            throw new RuntimeException("Machine is missing processor");
+        }
+
+        if(memory == null) {
+            throw new RuntimeException("Machine is missing memory");
+        }
+
+        // init processor->memory/hw communication bus
         processor.setMemoryBus(memoryBus);
         processor.setHardwareBus(hardwareBus);
 
+        // init devices
         for(Device device : devices) {
             device.init();
             device.setInterruptionBus(interruptionBus);
             device.setMemoryBus(memoryBus);
         }
-    }
-    
-    @Override
-    public void loadProgram(short[] program) {
-        memory.set((short)0, program);
-    }
 
-    @Override
-    public void start() {
+        // load program
+        memory.set((short)0, program);
+
         processor.start();
     }
 }

@@ -1,5 +1,8 @@
 package net.taviscaron.dcpu16vm;
 
+import net.taviscaron.dcpu16vm.config.InvalidConfigurationException;
+import net.taviscaron.dcpu16vm.config.MachineBuilder;
+import net.taviscaron.dcpu16vm.config.XmlMachineBuilder;
 import net.taviscaron.dcpu16vm.device.GenericClock;
 import net.taviscaron.dcpu16vm.device.GenericKeyboard;
 import net.taviscaron.dcpu16vm.device.LEM1802;
@@ -150,25 +153,14 @@ public class Main {
         (short)0x0000, (short)0x0000, (short)0x0000, (short)0x0000, (short)0x0000, (short)0x0000,
     };
 
-    public static void main(String[] args) {
-        Processor processor = new ProcessorImpl();
-        processor.attachDebugger(new Processor.Debugger() {
-            @Override
-            public void dumpState(State state, Memory memory) {
-                DebugUtils.printProcessorStateDump(state, System.out);
-                DebugUtils.pause(100);
-            }
-        });
-        
-        Memory memory = new MemoryImpl();
-        Device[] devices = new Device[] {
-            new GenericClock(),
-            new GenericKeyboard(),
-            new LEM1802(),
-        };
+    public static void main(String[] args) throws InvalidConfigurationException {
+        if(args.length != 1) {
+            System.err.println("Usage: java " + Main.class.getCanonicalName() + " machine_configuration.xml");
+            System.exit(1);
+        }
 
-        Machine machine = new MachineImpl(processor, memory, devices);
-        machine.loadProgram(dcpu16DiagnosticProgram);
+        Machine machine = new XmlMachineBuilder(args[0]).createMachine();
+        machine.setProgram(dcpu16DiagnosticProgram);
         machine.start();
     }
 }

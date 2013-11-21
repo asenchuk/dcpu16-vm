@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<machine type="net.taviscaron.dcpu16vm.machine.impl.MachineImpl">
+    <processor type="net.taviscaron.dcpu16vm.machine.impl.ProcessorImpl"/>
+    <memory type="net.taviscaron.dcpu16vm.machine.impl.MemoryImpl"/>
+    <hardware>
+        <device type="net.taviscaron.dcpu16vm.device.GenericClock"/>
+        <device type="net.taviscaron.dcpu16vm.device.GenericKeyboard"/>
+        <device type="net.taviscaron.dcpu16vm.device.LEM1802"/>
+    </hardware>
+</machine>

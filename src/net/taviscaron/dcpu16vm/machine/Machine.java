@@ -20,6 +20,10 @@ public interface Machine {
         public Device device(short index);
     }
 
-    public void loadProgram(short[] program);
+    public void setMemory(Memory memory);
+    public void setProcessor(Processor processor);
+    public void setDevices(Device[] devices);
+    public void setProgram(short[] program);
+
     public void start();
 }
