@@ -35,6 +35,10 @@ public abstract class Device {
         // init is not required
     }
 
+    public void shutdown() {
+        // device shutdown logic
+    }
+
     /**
      * Return 2 words device id from the HardwareInfo annotation.
      * A device can override this method in order to providing device id w/o HardwareInfo.

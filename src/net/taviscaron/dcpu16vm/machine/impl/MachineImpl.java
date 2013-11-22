@@ -1,6 +1,7 @@
 package net.taviscaron.dcpu16vm.machine.impl;
 
 import net.taviscaron.dcpu16vm.machine.Machine;
+import net.taviscaron.dcpu16vm.machine.MachineException;
 import net.taviscaron.dcpu16vm.machine.Memory;
 import net.taviscaron.dcpu16vm.machine.Processor;
 import net.taviscaron.dcpu16vm.machine.device.Device;
@@ -65,7 +66,7 @@ public class MachineImpl implements Machine {
     }
 
     @Override
-    public void start() {
+    public void start() throws MachineException {
         if(processor == null) {
             throw new RuntimeException("Machine is missing processor");
         }
@@ -88,6 +89,16 @@ public class MachineImpl implements Machine {
         // load program
         memory.set((short)0, program);
 
-        processor.start();
+        try {
+            processor.start();
+        } catch(Throwable th) {
+            // shutdown devices
+            for(Device device : devices) {
+                device.shutdown();
+            }
+
+            // re-throw exception
+            throw new MachineException(th);
+        }
     }
 }

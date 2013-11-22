@@ -179,6 +179,7 @@ public class LEM1802 extends Device {
     private short memMapFont;
     private short memMapPalette;
     private short borderColor;
+    private JFrame frame;
     private final Object repaintLockObj = new Object();
 
     @Override
@@ -186,19 +187,19 @@ public class LEM1802 extends Device {
         EventQueue.invokeLater(new Runnable() {
             @Override
             public void run() {
-                final JFrame frame = new JFrame();
+                frame = new JFrame();
                 frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
                 frame.setResizable(false);
                 frame.setVisible(true);
                 frame.setTitle(LEM1802.class.getCanonicalName());
                 frame.getContentPane().setPreferredSize(new Dimension(SCREEN_WIDTH * CELL_WIDTH * POINT_SIZE + 2 * BORDER_SIZE, SCREEN_HEIGHT * CELL_HEIGHT * POINT_SIZE + 2 * BORDER_SIZE));
-                
+
                 final PaintPane paintPane = new PaintPane();
                 frame.add(paintPane);
-                
+
                 frame.pack();
-                
-                new Timer().scheduleAtFixedRate(new TimerTask() {
+
+                new Timer(true).scheduleAtFixedRate(new TimerTask() {
                     @Override
                     public void run() {
                         EventQueue.invokeLater(new Runnable() {
@@ -211,6 +212,18 @@ public class LEM1802 extends Device {
                         });
                     }
                 }, 0, 1000 / REPAINT_FREQ);
+            }
+        });
+    }
+
+    @Override
+    public void shutdown() {
+        EventQueue.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                if(frame != null) {
+                    frame.dispose();
+                }
             }
         });
     }

@@ -30,13 +30,27 @@ public class GenericKeyboard extends Device {
     private final Set<Byte> pressedKeys = new HashSet<Byte>();
     private final Object lock = new Object();
     private short interruptMessage;
+    private KeyboardFrame keyboardFrame;
 
     @Override
     public void init() {
         EventQueue.invokeLater(new Runnable() {
             @Override
             public void run() {
-                new KeyboardFrame().setVisible(true);
+                keyboardFrame = new KeyboardFrame();
+                keyboardFrame.setVisible(true);
+            }
+        });
+    }
+
+    @Override
+    public void shutdown() {
+        EventQueue.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                if(keyboardFrame != null) {
+                    keyboardFrame.dispose();
+                }
             }
         });
     }

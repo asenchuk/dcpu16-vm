@@ -1,20 +1,9 @@
 package net.taviscaron.dcpu16vm;
 
 import net.taviscaron.dcpu16vm.config.InvalidConfigurationException;
-import net.taviscaron.dcpu16vm.config.MachineBuilder;
 import net.taviscaron.dcpu16vm.config.XmlMachineBuilder;
-import net.taviscaron.dcpu16vm.device.GenericClock;
-import net.taviscaron.dcpu16vm.device.GenericKeyboard;
-import net.taviscaron.dcpu16vm.device.LEM1802;
 import net.taviscaron.dcpu16vm.machine.Machine;
-import net.taviscaron.dcpu16vm.machine.Processor.State;
-import net.taviscaron.dcpu16vm.machine.device.Device;
-import net.taviscaron.dcpu16vm.machine.impl.ProcessorImpl;
-import net.taviscaron.dcpu16vm.machine.impl.MachineImpl;
-import net.taviscaron.dcpu16vm.machine.Memory;
-import net.taviscaron.dcpu16vm.machine.Processor;
-import net.taviscaron.dcpu16vm.machine.impl.MemoryImpl;
-import net.taviscaron.dcpu16vm.util.DebugUtils;
+import net.taviscaron.dcpu16vm.machine.MachineException;
 
 /**
  * dcpu16 virtual machine entry point
@@ -153,14 +142,19 @@ public class Main {
         (short)0x0000, (short)0x0000, (short)0x0000, (short)0x0000, (short)0x0000, (short)0x0000,
     };
 
-    public static void main(String[] args) throws InvalidConfigurationException {
+    public static void main(String[] args) {
         if(args.length != 1) {
             System.err.println("Usage: java " + Main.class.getCanonicalName() + " machine_configuration.xml");
             System.exit(1);
         }
 
-        Machine machine = new XmlMachineBuilder(args[0]).createMachine();
-        machine.setProgram(dcpu16DiagnosticProgram);
-        machine.start();
+        try {
+            Machine machine = new XmlMachineBuilder(args[0]).createMachine();
+            machine.setProgram(dcpu16DiagnosticProgram);
+            machine.start();
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.exit(1);
+        }
     }
 }

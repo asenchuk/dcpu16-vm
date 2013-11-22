@@ -25,5 +25,5 @@ public interface Machine {
     public void setDevices(Device[] devices);
     public void setProgram(short[] program);
 
-    public void start();
+    public void start() throws MachineException;
 }
