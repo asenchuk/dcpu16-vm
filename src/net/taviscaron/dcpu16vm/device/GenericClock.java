@@ -49,7 +49,7 @@ public class GenericClock extends Device {
                 } else {
                     ticks.set(0);
 
-                    long duration = (long)Math.max(1, 60000f / (regB & 0xffff));
+                    long duration = (long)Math.max(1, Math.round(1000f / 60 * (regB & 0xffff)));
                     timer = new Timer(true);
                     timer.scheduleAtFixedRate(timerTask, 0, duration);
                 }
