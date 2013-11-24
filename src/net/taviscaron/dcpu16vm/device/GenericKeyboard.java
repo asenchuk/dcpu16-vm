@@ -11,6 +11,7 @@ import java.awt.EventQueue;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.Set;
@@ -26,8 +27,8 @@ public class GenericKeyboard extends Device {
     private static final int CHECK_KEY_INT = 2;
     private static final int TURN_INTERRUPTS_INT = 3;
 
-    private final Queue<Byte> keyboardBuffer = new LinkedList<Byte>();
-    private final Set<Byte> pressedKeys = new HashSet<Byte>();
+    private final Queue<Short> keyboardBuffer = new LinkedList<Short>();
+    private final Set<Short> pressedKeys = new HashSet<Short>();
     private final Object lock = new Object();
     private short interruptMessage;
     private KeyboardFrame keyboardFrame;
@@ -66,11 +67,11 @@ public class GenericKeyboard extends Device {
                     keyboardBuffer.clear();
                     break;
                 case READ_KEY_INT:
-                    Byte next = keyboardBuffer.poll();
+                    Short next = keyboardBuffer.poll();
                     state.writeRegister(Processor.Register.C, (next != null) ? next : 0);
                     break;
                 case CHECK_KEY_INT:
-                    state.writeRegister(Processor.Register.C, (short)((pressedKeys.contains((byte)regB)) ? 1 : 0));
+                    state.writeRegister(Processor.Register.C, (short)((pressedKeys.contains(regB)) ? 1 : 0));
                     break;
                 case TURN_INTERRUPTS_INT:
                     interruptMessage = regB;
@@ -87,8 +88,8 @@ public class GenericKeyboard extends Device {
         }
     }
 
-    private byte keyFromKeyCode(int code) {
-        byte key = 0;
+    private short keyFromKeyCode(int code) {
+        short key = 0;
         switch(code) {
             case KeyEvent.VK_BACK_SPACE:
                 key = 0x10;
@@ -103,43 +104,78 @@ public class GenericKeyboard extends Device {
                 key = 0x13;
                 break;
             case KeyEvent.VK_SHIFT:
-                key = (byte)0x90;
+                key = (short)0x90;
                 break;
             case KeyEvent.VK_CONTROL:
-                key = (byte)0x91;
+                key = (short)0x91;
                 break;
             case KeyEvent.VK_UP:
-                key = (byte)0x80;
+                key = (short)0x80;
                 break;
             case KeyEvent.VK_DOWN:
-                key = (byte)0x81;
+                key = (short)0x81;
                 break;
             case KeyEvent.VK_LEFT:
-                key = (byte)0x82;
+                key = (short)0x82;
                 break;
             case KeyEvent.VK_RIGHT:
-                key = (byte)0x83;
+                key = (short)0x83;
                 break;
             default:
                 if(code >= 0x20 && code <= 0x7f) {
-                    key = (byte)code;
+                    key = (short)code;
                 }
                 break;
         }
         return key;
     }
 
-    private byte charFromCharCode(char code) {
-        byte ch = 0;
-        if(code >= 0x20 && code <= 0x7f) {
-            ch = (byte)code;
-        }
-        return ch;
-    }
-
-    private class KeyboardFrame extends JFrame implements KeyListener {
+    private class KeyboardFrame extends JFrame {
         private JTextArea textArea;
 
+        private KeyListener keyListener = new KeyListener() {
+            @Override
+            public void keyTyped(KeyEvent keyEvent) {
+                short code = (short)keyEvent.getKeyChar();
+                if(code >= 0x20 && code <= 0x7f) {
+                    synchronized(lock) {
+                        keyboardBuffer.add(code);
+                        onKeyEvent();
+                        updateState();
+                    }
+                }
+            }
+
+            @Override
+            public void keyPressed(KeyEvent keyEvent) {
+                short ch = keyFromKeyCode(keyEvent.getKeyCode());
+                if(ch != 0) {
+                    synchronized(lock) {
+                        // add arrow keys to the keyboard buffer
+                        if(ch >= 0x080 && ch <= 0x83) {
+                            keyboardBuffer.add(ch);
+                        }
+
+                        pressedKeys.add(ch);
+                        onKeyEvent();
+                        updateState();
+                    }
+                }
+            }
+
+            @Override
+            public void keyReleased(KeyEvent keyEvent) {
+                short ch = keyFromKeyCode(keyEvent.getKeyCode());
+                if(ch != 0) {
+                    synchronized(lock) {
+                        pressedKeys.remove(ch);
+                        onKeyEvent();
+                        updateState();
+                    }
+                }
+            }
+        };
+        
         public KeyboardFrame() {
             setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
             setResizable(false);
@@ -147,7 +183,7 @@ public class GenericKeyboard extends Device {
             setTitle(GenericKeyboard.class.getCanonicalName());
             setFocusable(true);
             getContentPane().setPreferredSize(new Dimension(300, 150));
-            addKeyListener(this);
+            addKeyListener(keyListener);
 
             textArea = new JTextArea();
             textArea.setFocusable(false);
@@ -158,47 +194,25 @@ public class GenericKeyboard extends Device {
             pack();
         }
 
-        @Override
-        public void keyTyped(KeyEvent keyEvent) {
-            byte ch = charFromCharCode(keyEvent.getKeyChar());
-            if(ch != 0) {
-                synchronized(lock) {
-                    keyboardBuffer.add(ch);
-                    onKeyEvent();
-                }
-                updateState();
-            }
-        }
-
-        @Override
-        public void keyPressed(KeyEvent keyEvent) {
-            byte ch = keyFromKeyCode(keyEvent.getKeyCode());
-            if(ch != 0) {
-                synchronized(lock) {
-                    pressedKeys.add(ch);
-                    onKeyEvent();
-                }
-                updateState();
-            }
-        }
-
-        @Override
-        public void keyReleased(KeyEvent keyEvent) {
-            byte ch = keyFromKeyCode(keyEvent.getKeyCode());
-            if(ch != 0) {
-                synchronized(lock) {
-                    pressedKeys.remove(ch);
-                    onKeyEvent();
-                }
-                updateState();
-            }
-        }
-
         private void updateState() {
             StringBuilder sb = new StringBuilder();
-            sb.append(String.format("buffer: %s\n", keyboardBuffer));
-            sb.append(String.format("pressed: %s\n", pressedKeys));
+            sb.append(String.format("buffer: [%s]\n", iterableToString(keyboardBuffer)));
+            sb.append(String.format("pressed: [%s]\n",  iterableToString(pressedKeys)));
             textArea.setText(new String(sb));
+        }
+        
+        private String iterableToString(Iterable<Short> iterable) {
+            StringBuilder sb = new StringBuilder();
+            Iterator<Short> it = iterable.iterator();
+            while(it.hasNext()) {
+                Short key = it.next();
+                sb.append(String.format("0x%02x", key));
+                
+                if(it.hasNext()) {
+                    sb.append(", ");
+                }
+            }
+            return new String(sb);
         }
     }
 }
