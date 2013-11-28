@@ -9,7 +9,7 @@ import java.io.IOException;
  */
 public class ProgramUtils {
     /**
-     * Read program from file and returns shors array
+     * Read program from file and returns short array
      * @param f file path (relative or absolute)
      * @return program short array
      * @throws IOException on some IO errors

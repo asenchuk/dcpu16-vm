@@ -13,17 +13,17 @@ public class MemoryImpl implements Memory {
     private short[] memory = new short[DEFAULT_MEMORY_WORDS_SIZE];
 
     @Override
-    public short readWord(short offset) {
+    public synchronized short readWord(short offset) {
         return memory[offset & 0xffff];
     }
 
     @Override
-    public void writeWord(short offset, short value) {
+    public synchronized void writeWord(short offset, short value) {
         memory[offset & 0xffff] = value;
     }
 
     @Override
-    public void fill(short from, short to, short value) {
+    public synchronized void fill(short from, short to, short value) {
         int start = from & 0xffff;
         int end = Math.min(to & 0xffff, memory.length);
         
@@ -38,7 +38,7 @@ public class MemoryImpl implements Memory {
     }
 
     @Override
-    public void set(short offset, short[] buffer) {
+    public synchronized void set(short offset, short[] buffer) {
         int start = offset & 0xffff;
         int size = Math.min(buffer.length, memory.length - start);
         System.arraycopy(buffer, 0, memory, start, size);

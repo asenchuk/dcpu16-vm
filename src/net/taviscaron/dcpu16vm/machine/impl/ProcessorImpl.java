@@ -723,7 +723,7 @@ public class ProcessorImpl extends Processor {
             value = new MemoryValue(state.sp);
         } else if(code == 0x1a) {
             value = new MemoryValue((short)(state.sp + nextWord()));
-        } else if(code ==0x1b) {
+        } else if(code == 0x1b) {
             value = spValue;
         } else if(code == 0x1c) {
             value = pcValue;
