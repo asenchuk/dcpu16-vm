@@ -5,12 +5,14 @@ import net.taviscaron.dcpu16vm.machine.impl.MachineImpl;
 import net.taviscaron.dcpu16vm.machine.impl.MemoryImpl;
 import net.taviscaron.dcpu16vm.machine.impl.ProcessorImpl;
 import org.junit.Before;
+import org.junit.Ignore;
 
 /**
  * Perform tests on default machine
  * @author Andrei Senchuk
  */
-public class DefaultMachineTest {
+@Ignore
+public abstract class DefaultMachineTest {
     protected Machine machine;
 
     @Before
