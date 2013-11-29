@@ -21,9 +21,17 @@ public interface Machine {
     }
 
     public void setMemory(Memory memory);
+    public Memory getMemory();
+
     public void setProcessor(Processor processor);
+    public Processor getProcessor();
+
     public void setDevices(Device[] devices);
+    public Device[] getDevices();
+    public Device getDevice(int index);
+
     public void setProgram(short[] program);
+    public short[] getProgram();
 
     public void start() throws MachineException;
 }

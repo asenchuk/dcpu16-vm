@@ -628,13 +628,19 @@ public class ProcessorImpl extends Processor {
      */
     private final Object lock = new Object();
 
+    /**
+     * Processor running
+     */
+    private volatile boolean running;
+
     @Override
     public void start() {
+        running = true;
         state.skipping = false;
         state.reset();
         state.sp = memoryBus.memory().sizeInWords();
         
-        while(true) {
+        while(running) {
             // interrupts are not triggered while the DCPU-16 is skipping.
             if(!state.skipping && !interruptsQueuing) {
                 Short code = null;
@@ -656,6 +662,10 @@ public class ProcessorImpl extends Processor {
             
             dumpState();
         }
+    }
+
+    public void stop() {
+        running = false;
     }
 
     @Override

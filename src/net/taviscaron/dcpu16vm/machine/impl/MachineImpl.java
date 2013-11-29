@@ -51,18 +51,43 @@ public class MachineImpl implements Machine {
     }
 
     @Override
+    public Memory getMemory() {
+        return memory;
+    }
+
+    @Override
     public void setProcessor(Processor processor) {
         this.processor = processor;
     }
 
     @Override
+    public Processor getProcessor() {
+        return processor;
+    }
+
+    @Override
     public void setDevices(Device[] devices) {
-        this.devices = (devices != null) ? devices : new Device[0];
+        this.devices = devices;
+    }
+
+    @Override
+    public Device[] getDevices() {
+        return devices;
+    }
+
+    @Override
+    public Device getDevice(int index) {
+        return devices[index];
     }
 
     @Override
     public void setProgram(short[] program) {
         this.program = program;
+    }
+
+    @Override
+    public short[] getProgram() {
+        return program;
     }
 
     @Override
@@ -80,6 +105,10 @@ public class MachineImpl implements Machine {
         processor.setHardwareBus(hardwareBus);
 
         // init devices
+        if(devices == null) {
+            devices = new Device[0];
+        }
+
         for(Device device : devices) {
             device.init();
             device.setInterruptionBus(interruptionBus);

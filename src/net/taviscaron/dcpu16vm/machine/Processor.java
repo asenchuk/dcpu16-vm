@@ -16,9 +16,9 @@ public abstract class Processor {
     
     /** Processor debugger interface */
     public interface Debugger {
-        public void dumpState(State state, Memory memory);
+        public void dumpState(Processor processor, State state, Memory memory);
     }
-    
+
     /** DCPU-16 processor state */
     public class State {
         /** common registers */
@@ -91,11 +91,12 @@ public abstract class Processor {
     
     protected void dumpState() {
         if(debugger != null) {
-            debugger.dumpState(state, memoryBus.memory());
+            debugger.dumpState(this, state, memoryBus.memory());
         }
     }
     
     /** Start processor working */
     public abstract void start();
+    public abstract void stop();
     public abstract void interrupt(short code);
 }
