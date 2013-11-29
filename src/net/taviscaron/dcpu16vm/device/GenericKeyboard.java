@@ -152,7 +152,7 @@ public class GenericKeyboard extends Device {
                 if(ch != 0) {
                     synchronized(lock) {
                         // add arrow keys to the keyboard buffer
-                        if(ch >= 0x080 && ch <= 0x83) {
+                        if(ch < 0x20 || ch > 0x7f) {
                             keyboardBuffer.add(ch);
                         }
 
