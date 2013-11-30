@@ -4,7 +4,6 @@ import net.taviscaron.dcpu16vm.machine.MachineException;
 import net.taviscaron.dcpu16vm.machine.Memory;
 import net.taviscaron.dcpu16vm.machine.Processor;
 import net.taviscaron.dcpu16vm.test.DefaultMachineTest;
-import net.taviscaron.dcpu16vm.util.ProgramUtils;
 import org.junit.Test;
 import org.junit.Assert;
 
@@ -33,6 +32,13 @@ import java.io.IOException;
  * @author Andrei Senchuk
  */
 public class IntegerOperationsTest extends DefaultMachineTest {
+    private static final short[] program = new short[] {
+        (short)0x7c01, (short)0xfffb, (short)0xa021, (short)0x0025,
+        (short)0x0461, (short)0x8c27, (short)0x0481, (short)0x9429,
+        (short)0x1021, (short)0x7c29, (short)0xfff1, (short)0x04a1,
+        (short)0x7f81, (short)0x000c
+    };
+    
     @Test
     public void testIntegerOperations() throws MachineException, IOException {
         machine.getProcessor().attachDebugger(new Processor.Debugger() {
@@ -81,7 +87,7 @@ public class IntegerOperationsTest extends DefaultMachineTest {
             }
         });
 
-        machine.setProgram(ProgramUtils.loadFromFile("program/signed_operations_test.dcpu16"));
+        machine.setProgram(program);
         machine.start();
     }
 }
