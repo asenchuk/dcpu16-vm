@@ -44,6 +44,7 @@ public class SPED3 extends Device {
     /** graphic size */
     private static final float DEFAULT_SIZE = 1f;
     private static final float VERTEX_INTENSE_SIZE = 3f;
+    private static final float CAMERA_DISTANCE_FROM_CENTER = 3.5f;
     
     /** colors */
     private static final int DEFAULT_LINE_COLOR_INDEX = 2;
@@ -63,6 +64,7 @@ public class SPED3 extends Device {
     private boolean rotating;
     
     private final GLEventListener renderer = new GLEventListener() {
+        private final GLU glu = new GLU();
         private float currentRotation = 0.0f;
         
         private void drawVertexs(Vertex[] vertexs, GLAutoDrawable glDrawable, GL gl) {
@@ -100,7 +102,8 @@ public class SPED3 extends Device {
                 if(currentRotation != rotation) {
                     rotating = true;
                     
-                    currentRotation += Math.min(ROTATION_SPEED / UPDATE_FREQ, rotation - currentRotation);
+                    int direction = (currentRotation < rotation) ? 1 : -1;
+                    currentRotation += direction * Math.min(ROTATION_SPEED / UPDATE_FREQ, Math.abs(rotation - currentRotation));
                     if(currentRotation > 360) {
                         currentRotation -= 360;
                     }
@@ -108,7 +111,11 @@ public class SPED3 extends Device {
                     rotating = false;
                 }
                 
-                gl.glRotatef(currentRotation, 0.0f, 1.0f, 0.0f);
+                double angle = currentRotation / 180 * Math.PI;
+                double dx = Math.sin(angle) * CAMERA_DISTANCE_FROM_CENTER;
+                double dz = Math.cos(angle) * CAMERA_DISTANCE_FROM_CENTER;
+                
+                glu.gluLookAt(dx + 0.5, 0.5, dz + 0.5, 0.5, 0.5, 0.5, 0, 1, 0);
                 
                 if(mapOffset != 0 && vertexCount != 0) {
                     int count = vertexCount & 0xffff;
@@ -144,13 +151,9 @@ public class SPED3 extends Device {
         @Override   
         public void reshape(GLAutoDrawable gLDrawable, int x, int y, int width, int height) {
             GL gl = gLDrawable.getGL();
-            GLU glu = new GLU();
-            
-            float h = width/(float)height;
             gl.glMatrixMode(GL.GL_PROJECTION);
             gl.glLoadIdentity();
-            glu.gluPerspective(30.0f, h, 1.0, 1000.0);
-            glu.gluLookAt(0, 0, 3.5, 0, 0, 0, 0, 1, 0);
+            glu.gluPerspective(30.0f, width/(float)height, 1.0, 1000.0);
             gl.glMatrixMode(GL.GL_MODELVIEW);
             gl.glLoadIdentity();
         }
@@ -227,9 +230,9 @@ public class SPED3 extends Device {
         public final int color;
         
         public Vertex(short first, short second) {
-            x = (first & 0xff) / 255f - 0.5f;
-            y = ((first >> 8) & 0xff) / 255f - 0.5f;
-            z = (second & 0xff) / 255f - 0.5f;
+            x = (first & 0xff) / 255f;
+            y = ((first >> 8) & 0xff) / 255f;
+            z = (second & 0xff) / 255f;
             color = (second >> 8) & 0x03;
             intense = (((second >> 10) & 0x01) == 1);
         }
