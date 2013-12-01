@@ -7,5 +7,6 @@
         <device type="net.taviscaron.dcpu16vm.device.GenericKeyboard"/>
         <device type="net.taviscaron.dcpu16vm.device.M35FD"/>
         <device type="net.taviscaron.dcpu16vm.device.LEM1802"/>
+        <device type="net.taviscaron.dcpu16vm.device.SPED3"/>
     </hardware>
 </machine>
