@@ -1,15 +1,15 @@
 package net.taviscaron.dcpu16vm.device;
 
-import com.sun.opengl.util.Animator;
-import com.sun.opengl.util.FPSAnimator;
 import java.awt.Dimension;
 import java.awt.EventQueue;
-import javax.media.opengl.GL;
+import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
-import javax.media.opengl.GLCanvas;
 import javax.media.opengl.GLEventListener;
+import javax.media.opengl.awt.GLCanvas;
 import javax.media.opengl.glu.GLU;
 import javax.swing.JFrame;
+
+import com.jogamp.opengl.util.FPSAnimator;
 import net.taviscaron.dcpu16vm.machine.Processor.Register;
 import net.taviscaron.dcpu16vm.machine.Processor.State;
 import net.taviscaron.dcpu16vm.machine.device.Device;
@@ -67,11 +67,11 @@ public class SPED3 extends Device {
         private final GLU glu = new GLU();
         private float currentRotation = 0.0f;
         
-        private void drawVertexs(Vertex[] vertexs, GLAutoDrawable glDrawable, GL gl) {
+        private void drawVertexs(Vertex[] vertexs, GL2 gl) {
             // draw lines
             gl.glLineWidth(DEFAULT_SIZE);
             gl.glColor3fv(COLORS[DEFAULT_LINE_COLOR_INDEX], 0);
-            gl.glBegin(GL.GL_LINE_STRIP);
+            gl.glBegin(GL2.GL_LINE_STRIP);
             
             for(Vertex v : vertexs) {
                 gl.glVertex3f(v.x, v.z, v.y);
@@ -83,7 +83,7 @@ public class SPED3 extends Device {
             for(Vertex v : vertexs) {
                 gl.glPointSize((v.intense) ? VERTEX_INTENSE_SIZE : DEFAULT_SIZE);
                 gl.glColor3fv(COLORS[v.color], 0);
-                gl.glBegin(GL.GL_POINTS);
+                gl.glBegin(GL2.GL_POINTS);
                 gl.glVertex3f(v.x, v.z, v.y);
                 gl.glEnd();
             }
@@ -91,9 +91,9 @@ public class SPED3 extends Device {
         
         @Override
         public void display(GLAutoDrawable gLDrawable) {
-            GL gl = gLDrawable.getGL();
+            GL2 gl = gLDrawable.getGL().getGL2();
             
-            gl.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT);
+            gl.glClear(GL2.GL_COLOR_BUFFER_BIT | GL2.GL_DEPTH_BUFFER_BIT);
             
             // reset matrix
             gl.glLoadIdentity();
@@ -127,34 +127,34 @@ public class SPED3 extends Device {
                         vertexs[i] = new Vertex(first, second);
                     }
                     
-                    drawVertexs(vertexs, gLDrawable, gl);
+                    drawVertexs(vertexs, gl);
                 }
             }
-        }
-
-        @Override
-        public void displayChanged(GLAutoDrawable gLDrawable, boolean modeChanged, boolean deviceChanged) {
-            // noop
         }
         
         @Override
         public void init(GLAutoDrawable gLDrawable) {
-            GL gl = gLDrawable.getGL();
-            gl.glShadeModel(GL.GL_SMOOTH);
+            GL2 gl = gLDrawable.getGL().getGL2();
+            gl.glShadeModel(GL2.GL_SMOOTH);
             gl.glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
             gl.glClearDepth(1.0f);
-            gl.glEnable(GL.GL_DEPTH_TEST);
-            gl.glDepthFunc(GL.GL_LEQUAL);
-            gl.glHint(GL.GL_PERSPECTIVE_CORRECTION_HINT, GL.GL_NICEST);
+            gl.glEnable(GL2.GL_DEPTH_TEST);
+            gl.glDepthFunc(GL2.GL_LEQUAL);
+            gl.glHint(GL2.GL_PERSPECTIVE_CORRECTION_HINT, GL2.GL_NICEST);
         }
-        
+
+        @Override
+        public void dispose(GLAutoDrawable glAutoDrawable) {
+            // noop
+        }
+
         @Override   
         public void reshape(GLAutoDrawable gLDrawable, int x, int y, int width, int height) {
-            GL gl = gLDrawable.getGL();
-            gl.glMatrixMode(GL.GL_PROJECTION);
+            GL2 gl = gLDrawable.getGL().getGL2();
+            gl.glMatrixMode(GL2.GL_PROJECTION);
             gl.glLoadIdentity();
             glu.gluPerspective(30.0f, width/(float)height, 1.0, 1000.0);
-            gl.glMatrixMode(GL.GL_MODELVIEW);
+            gl.glMatrixMode(GL2.GL_MODELVIEW);
             gl.glLoadIdentity();
         }
     };
@@ -177,7 +177,7 @@ public class SPED3 extends Device {
                 
                 frame.pack();
 
-                Animator animator = new FPSAnimator(UPDATE_FREQ);
+                FPSAnimator animator = new FPSAnimator(UPDATE_FREQ);
                 animator.add(canvas);
                 animator.start();
             }
