@@ -348,13 +348,13 @@ public class LEM1802 extends Device {
         }
         
         private int symbolForIndex(short index) {
-            int symbol = (DEFAULT_FONT[index * 2] << 16) + DEFAULT_FONT[index * 2 + 1];
+            short first = DEFAULT_FONT[index * 2];
+            short second = DEFAULT_FONT[index * 2 + 1];
             if (memMapFont != 0) {
-                short first = memoryBus.memory().readWord((short) (memMapFont + index * 2));
-                short second = memoryBus.memory().readWord((short) (memMapFont + index * 2 + 1));
-                symbol = (first << 16) + second;
+                first = memoryBus.memory().readWord((short)(memMapFont + index * 2));
+                second = memoryBus.memory().readWord((short)(memMapFont + index * 2 + 1));
             }
-            return symbol;
+            return (first << 16) + (second & 0xffff);
         }
     }
 }
