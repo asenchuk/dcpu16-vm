@@ -1,0 +1,138 @@
+; Move start
+SET PC, start
+
+; Reserve 512 words for boot sector
+.org 0x200
+
+; Hang loop for case when the boot loader is broken
+; and trying to continue execution after itself
+SUB PC, 1
+
+; start firmware from here
+:start
+
+JSR search_devices
+
+IFE [m35fd], 0xffff
+    SET PC, error_no_drive
+
+:disk_waiting_loop
+    SET A, 0
+    HWI [m35fd]
+    IFN B, 0
+        SET PC, copy_boot_sector
+
+    ; Print disk waiting message and check again
+    SET A, message_diskwaiting
+    JSR print_message
+    SET PC, disk_waiting_loop
+
+:copy_boot_sector
+    ; Copy the boot sector from the disk to memory
+    SET A, 2
+    SET X, 0
+    SET Y, 0
+    HWI [m35fd]
+    IFN B, 1
+        SET PC, error_readerror
+
+:wait_for_completion
+    SET A, 0
+    HWI [m35fd]
+    IFE B, 1
+        SET PC, boot
+    SET PC, wait_for_completion
+
+:boot
+    SET A, 0
+    SET B, 0
+    SET C, 0
+    SET I, 0
+    SET J, 0
+    SET X, [lem1802]
+    SET Y, [m35fd]
+    SET Z, 0
+    SET SP, 0
+    IAS, 0
+    ; And finally start boot loader
+    SET PC, 0
+
+; Search for lem1802 and m35fd indexes and return execution to PC address
+:search_devices
+    HWN I
+    :search_devices_loop
+        SUB I, 1
+        ; return if that's all devices
+        IFU I, 0
+            SET PC, POP
+
+        HWQ I
+
+        ; m35fd
+        IFE A, 0x24c5
+            IFE B, 0x4fd5
+                SET [m35fd], I
+
+        ; check lem1802
+        IFE A, 0xF615
+            IFE B, 0x7349
+                SET [lem1802], I
+
+        SET PC, search_devices_loop
+
+; Print message
+; A - message address
+:print_message
+    IFE [lem1802], 0xffff
+        SET PC, POP
+
+    SET I, A
+    SET J, [lem1802_mem]
+    :print_message_loop
+        IFE [I], 0
+            SET PC, print_message_turn_on_display
+
+        SET B, [I]
+        BOR B, 0x8000
+        STI [J], B
+        SET PC, print_message_loop
+
+    :print_message_turn_on_display
+        SET A, 0
+        SET B, [lem1802_mem]
+        HWI [lem1802]
+        SET PC, POP
+
+; Crash firmware loop
+:crash
+    SUB PC, 1
+
+; Show no drive error
+:error_no_drive
+    SET A, message_nodrive
+    JSR print_message
+    SET PC, crash
+
+; Show no drive error
+:error_readerror
+    SET A, message_readerror
+    JSR print_message
+    SET PC, crash
+
+; Consts
+:lem1802_mem
+    DAT 0x8000
+
+; Messages
+:message_nodrive
+    DAT "ATTACH M35FD AND REBOOT", 0
+:message_diskwaiting
+    DAT "WAITING FOR DISK       ", 0
+:message_readerror
+    DAT "DRIVE READ ERROR       ", 0
+
+; Devices indexes
+:lem1802
+    DAT 0xffff
+:m35fd
+    DAT 0xffff
