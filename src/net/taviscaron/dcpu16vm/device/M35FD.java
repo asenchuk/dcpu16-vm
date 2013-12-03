@@ -30,6 +30,8 @@ public class M35FD extends Device {
     private static final int SIZE_IN_WORDS = 737280;
     private static final int SPEED_IN_WORDS_PER_SEC = 30700;
     private static final int TRACK_SEEKING_MICROSECONDS = 2400;
+    private static final int SECTOR_SIZE = 512;
+
     /** interrupts */
     private static final int POLL_DEVICE_INT = 0x0000;
     private static final int TURN_INTERRUPTS_INT = 0x0001;
@@ -78,6 +80,10 @@ public class M35FD extends Device {
                 frame = null;
             }
         });
+
+        synchronized(lock) {
+            closeDiskImage();
+        }
     }
 
     @Override
@@ -111,6 +117,9 @@ public class M35FD extends Device {
             case STATE_READY:
             case STATE_READY_WP:
                 try {
+                    busy = true;
+                    updateState();
+
                     executor.execute(new ReadOperation(state.readRegister(Processor.Register.X), state.readRegister(Processor.Register.Y)));
                     state.writeRegister(Processor.Register.B, (short)1);
                 } catch(BadSectorException e) {
@@ -134,6 +143,9 @@ public class M35FD extends Device {
         switch(this.state) {
             case STATE_READY:
                 try {
+                    busy = true;
+                    updateState();
+
                     executor.execute(new WriteOperation(state.readRegister(Processor.Register.X), state.readRegister(Processor.Register.Y)));
                     state.writeRegister(Processor.Register.B, (short)1);
                 } catch(BadSectorException e) {
@@ -215,17 +227,22 @@ public class M35FD extends Device {
         }
     }
 
-    /** Eject disk */
-    private void ejectDisk() {
-        synchronized(lock) {
+    private void closeDiskImage() {
+        if(randomAccessFile != null) {
             try {
                 randomAccessFile.close();
                 randomAccessFile = null;
             } catch (IOException e) {
                 System.err.println("Can't close M35FD image: " + e);
-            } finally {
-                updateState();
             }
+        }
+    }
+
+    /** Eject disk */
+    private void ejectDisk() {
+        synchronized(lock) {
+            closeDiskImage();
+            updateState();
         }
     }
 
@@ -242,11 +259,17 @@ public class M35FD extends Device {
 
         @Override
         protected void operation() throws IOException {
-            randomAccessFile.setLength(sector & 0xffff);
-            byte first = randomAccessFile.readByte();
-            byte second = randomAccessFile.readByte();
-            short word = (short)(((first & 0xff) << 8) + (second & 0xff));
-            memoryBus.memory().writeWord(ram, word);
+            byte[] buffer = new byte[SECTOR_SIZE * 2];
+            for(int i = 0; i < SECTOR_SIZE; i++) {
+                short word = memoryBus.memory().readWord((short)(ram + i));
+                buffer[i * 2] = (byte)((word >> 8) & 0xff);
+                buffer[i * 2 + 1] = (byte)(word & 0xff);
+                readWordDelay();
+            }
+
+            seekDelay();
+            randomAccessFile.seek(sector & 0xffff * SECTOR_SIZE);
+            randomAccessFile.write(buffer);
         }
     }
 
@@ -258,10 +281,17 @@ public class M35FD extends Device {
 
         @Override
         protected void operation() throws IOException {
-            short word = memoryBus.memory().readWord(ram);
-            randomAccessFile.setLength(sector & 0xffff);
-            randomAccessFile.writeByte((word >> 8) & 0xff);
-            randomAccessFile.writeByte(word & 0xff);
+            randomAccessFile.seek((sector & 0xffff) * SECTOR_SIZE);
+            seekDelay();
+
+            byte[] buffer = new byte[SECTOR_SIZE * 2];
+            randomAccessFile.read(buffer);
+
+            for(int i = 0; i < SECTOR_SIZE; i++) {
+                short word = (short)((buffer[i * 2] << 8) + (buffer[i * 2 + 1] & 0xff));
+                memoryBus.memory().writeWord((short)(ram + i), word);
+                readWordDelay();
+            }
         }
     }
 
@@ -281,20 +311,6 @@ public class M35FD extends Device {
 
         @Override
         public void run() {
-            // set busy state
-            synchronized(lock) {
-                busy = true;
-                updateState();
-            }
-
-            // simulate seek+read delay
-            try {
-                TimeUnit.MICROSECONDS.sleep(TRACK_SEEKING_MICROSECONDS);
-                TimeUnit.MICROSECONDS.sleep((long)(1000000f / SPEED_IN_WORDS_PER_SEC));
-            } catch(InterruptedException e) {
-                System.err.println("M35FD: io delay interrupted");
-            }
-
             // read if it's possible and update busy state
             synchronized(lock) {
                 if(randomAccessFile != null) {
@@ -309,6 +325,22 @@ public class M35FD extends Device {
 
                 busy = false;
                 updateState();
+            }
+        }
+
+        protected void seekDelay() {
+            try {
+                TimeUnit.MICROSECONDS.sleep(TRACK_SEEKING_MICROSECONDS);
+            } catch(InterruptedException e) {
+                System.err.println("M35FD: io delay interrupted");
+            }
+        }
+
+        protected void readWordDelay() {
+            try {
+                TimeUnit.MICROSECONDS.sleep((long)(1000000f / SPEED_IN_WORDS_PER_SEC));
+            } catch(InterruptedException e) {
+                System.err.println("M35FD: io delay interrupted");
             }
         }
 
