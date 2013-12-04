@@ -50,6 +50,7 @@ public class M35FD extends Device {
     private static final short ERROR_EJECT = 0x0004;
     private static final short ERROR_BAD_SECTOR = 0x0005;
     private static final short ERROR_BROKEN = (short)0xffff;
+    
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Object lock = new Object();
     private short error = ERROR_NONE;
@@ -170,17 +171,17 @@ public class M35FD extends Device {
     /** Update internal device state */
     private void updateState() {
         synchronized(lock) {
-            short state = STATE_NO_MEDIA;
+            short currentState = STATE_NO_MEDIA;
             if(randomAccessFile != null) {
                 if(busy) {
-                    state = STATE_BUSY;
+                    currentState = STATE_BUSY;
                 } else if(writeProtection) {
-                    state = STATE_READY_WP;
+                    currentState = STATE_READY_WP;
                 } else {
-                    state = STATE_READY;
+                    currentState = STATE_READY;
                 }
             }
-            setState(state);
+            setState(currentState);
         }
     }
 

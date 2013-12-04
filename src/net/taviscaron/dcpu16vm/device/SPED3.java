@@ -136,7 +136,7 @@ public class SPED3 extends Device {
         public void init(GLAutoDrawable gLDrawable) {
             GL2 gl = gLDrawable.getGL().getGL2();
             gl.glShadeModel(GL2.GL_SMOOTH);
-            gl.glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+            gl.glClearColor(0.17f, 0.17f, 0.17f, 1.0f);
             gl.glClearDepth(1.0f);
             gl.glEnable(GL2.GL_DEPTH_TEST);
             gl.glDepthFunc(GL2.GL_LEQUAL);
