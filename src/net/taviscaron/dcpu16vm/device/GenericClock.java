@@ -41,14 +41,14 @@ public class GenericClock extends Device {
 
         switch(regA) {
             case SET_FREQ_INT:
-                if(regB == 0) {
-                    if(timer != null) {
-                        timer.cancel();
-                        timer = null;
-                    }
-                } else {
-                    ticks.set(0);
+                // remove previous timer if it exists
+                if(timer != null) {
+                    timer.cancel();
+                    timer = null;
+                }
 
+                // run new timer if B != 0
+                if(regB != 0) {
                     long duration = (long)Math.max(1, Math.round(1000f / 60 * (regB & 0xffff)));
                     timer = new Timer(true);
                     timer.scheduleAtFixedRate(timerTask, 0, duration);
