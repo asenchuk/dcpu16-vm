@@ -202,7 +202,7 @@ public class SPED3 extends Device {
             short regA = state.readRegister(Register.A);
             switch(regA) {
                 case POLL_DEVICE_INT:
-                    short st = (mapOffset != 0 && vertexCount > 0) ? ((rotating) ? STATE_TURNING : STATE_RUNNING) : STATE_TURNING;
+                    short st = (mapOffset != 0 && vertexCount > 0) ? ((rotating) ? STATE_TURNING : STATE_RUNNING) : STATE_NO_DATA;
                     state.writeRegister(Register.B, st);
                     state.writeRegister(Register.C, errno);
                     errno = ERROR_NONE;
