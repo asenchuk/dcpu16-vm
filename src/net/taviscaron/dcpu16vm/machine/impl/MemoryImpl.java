@@ -23,16 +23,6 @@ public class MemoryImpl implements Memory {
     }
 
     @Override
-    public synchronized void fill(short from, short to, short value) {
-        int start = from & 0xffff;
-        int end = Math.min(to & 0xffff, memory.length);
-        
-        for(int i = start; i < end; i++) {
-            memory[i] = value;
-        }
-    }
-
-    @Override
     public short sizeInWords() {
         return (short)memory.length;
     }

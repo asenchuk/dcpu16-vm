@@ -11,7 +11,7 @@ public abstract class Device {
     /** Communication channel device->processor */
     protected Machine.InterruptionBus interruptionBus;
 
-    /** Communication channer device->memory */
+    /** Communication channel device->memory */
     protected Machine.MemoryBus memoryBus;
 
     /**
